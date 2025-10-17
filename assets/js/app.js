@@ -12,6 +12,7 @@ const els = {
   consent: document.getElementById("consent"),
   preview: document.getElementById("preview"),
   toggleCamera: document.getElementById("toggleCamera"),
+  uploadIframe: document.getElementById("upload_iframe"),
 };
 
 let mediaStream = null;
@@ -206,18 +207,25 @@ els.form.addEventListener("submit", (e) => {
   // 3) Enviar
   setStatus(els.submitStatus, "Enviando…", "info");
   f.submit();
-  setStatus(els.submitStatus, "Enviado correctamente. Redirigiendo…", "success");
-  try {
-    const url = new URL(window.location.origin + window.location.pathname.replace(/[^/]+$/, "success.html"));
-    url.searchParams.set("token", currentToken);
-    // Dar un pequeño tiempo para que el submit del iframe se dispare sin cortes 
-    setTimeout(() => {
-      window.location.href = url.toString();
-    }, 600);
-  } catch (e) {
-    // Fallback: relativo simple
-    window.location.href = `success.html?token=${encodeURIComponent(currentToken)}`;
+
+  // Redirección robusta: espera a que el iframe cargue, con fallback por tiempo
+  const target = new URL("success.html", window.location.href);
+  target.searchParams.set("token", currentToken);
+
+  let redirected = false;
+  const doRedirect = () => {
+    if (redirected) return;
+    redirected = true;
+    setStatus(els.submitStatus, "Enviado correctamente. Redirigiendo…", "success");
+    window.location.assign(target.toString());
+  };
+
+  // Si el iframe notifica carga, redirige
+  if (els.uploadIframe) {
+    els.uploadIframe.addEventListener("load", doRedirect, { once: true });
   }
+  // Fallback por si no se dispara load (p.ej., respuesta sin cuerpo)
+  setTimeout(doRedirect, 2000);
 });
 
 // ===== Limpieza =====
