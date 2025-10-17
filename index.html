@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Verificación rápida</title>
+  <link rel="stylesheet" href="assets/css/style.css" />
+  <meta name="theme-color" content="#5f37ef">
+</head>
+<body>
+  <main class="page">
+    <header class="form-header">
+      <h1 class="form-title">Verificación rápida</h1>
+      <p class="form-subtitle">Captura una selfie con tu documento. Proceso &lt; 1 minuto.</p>
+    </header>
+
+    <section class="card">
+      <form id="verify-form" novalidate>
+        <!-- Nombre (dejamos el campo porque lo pediste, pero el contenido lo refinamos luego) -->
+        <div class="field">
+          <label for="nombre" class="label required">Nombre completo</label>
+          <input id="nombre" name="nombre" type="text" class="input" placeholder="Escribe tu nombre" required>
+        </div>
+
+        <!-- Token generado automáticamente -->
+        <div class="field">
+          <label class="label">Código de sesión</label>
+          <div class="token-box">
+            <span id="token">—</span>
+            <small class="hint">Este código se estampará en tu foto automáticamente.</small>
+          </div>
+        </div>
+
+        <!-- Cámara / captura -->
+        <div class="field">
+          <label class="label required">Selfie con documento</label>
+
+          <div class="camera-wrap">
+            <video id="video" playsinline autoplay muted></video>
+            <canvas id="canvas" width="1280" height="960" hidden></canvas>
+            <div class="camera-actions">
+              <button type="button" id="btn-capture" class="btn-secondary">Tomar foto</button>
+              <button type="button" id="btn-retake" class="btn-tertiary" hidden>Repetir</button>
+            </div>
+          </div>
+
+          <!-- Fallback: si la cámara falla, permitimos captura vía input de archivo (intentará abrir cámara frontal) -->
+          <div id="fallback" class="fallback" hidden>
+            <p class="hint">Si tu cámara no abre, usa este botón:</p>
+            <input type="file" id="file-fallback" accept="image/*" capture="user">
+          </div>
+
+          <output id="shot-status" class="status" aria-live="polite"></output>
+        </div>
+
+        <!-- Consentimiento datos -->
+        <section class="consent">
+          <p class="consent-text">
+            Confirmo que he leído, entendido y acepto la
+            <a href="https://alicoempaques.com/blogs/politicas/politicas-de-privacidad"
+               target="_blank" rel="noopener">Política de Tratamiento de Datos Personales de Alico</a>,
+            y autorizo el uso de mis datos e imágenes para los fines allí descritos.
+          </p>
+          <label class="checkbox">
+            <input type="checkbox" id="acepto" name="acepto" required>
+            <span>Acepto el tratamiento de mis datos personales</span>
+          </label>
+        </section>
+
+        <!-- Acciones -->
+        <div class="actions">
+          <button type="submit" id="btn-submit" class="btn-primary">Enviar</button>
+          <span id="send-status" class="status" aria-live="polite"></span>
+        </div>
+      </form>
+    </section>
+
+    <footer class="footer">
+      <p class="muted">Demostración • Mantén esta pestaña abierta hasta ver el mensaje de confirmación.</p>
+    </footer>
+  </main>
+
+  <script src="assets/js/app.js"></script>
+</body>
+</html>
