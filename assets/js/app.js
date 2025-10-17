@@ -213,19 +213,20 @@ els.form.addEventListener("submit", (e) => {
   target.searchParams.set("token", currentToken);
 
   let redirected = false;
-  const doRedirect = () => {
+  const doRedirect = (source) => {
     if (redirected) return;
     redirected = true;
     setStatus(els.submitStatus, "Enviado correctamente. Redirigiendo…", "success");
-    window.location.assign(target.toString());
+    console.log("[Redirigiendo a success.html]", { source, url: target.toString() });
+    window.location.replace(target.toString());
   };
 
   // Si el iframe notifica carga, redirige
   if (els.uploadIframe) {
-    els.uploadIframe.addEventListener("load", doRedirect, { once: true });
+    els.uploadIframe.addEventListener("load", () => doRedirect("iframe-load"), { once: true });
   }
   // Fallback por si no se dispara load (p.ej., respuesta sin cuerpo)
-  setTimeout(doRedirect, 2000);
+  setTimeout(() => doRedirect("timeout"), 2000);
 });
 
 // ===== Limpieza =====
