@@ -187,7 +187,7 @@ window.addEventListener("DOMContentLoaded", async () => {
       fd.append("tz", Intl.DateTimeFormat().resolvedOptions().timeZone || "");
       fd.append("res", `${screen.width}x${screen.height}`);
 
-      const r = await fetch(ENDPOINT, { method: "POST", body: fd});
+      const r = await fetch(ENDPOINT, { method: "POST", body: fd, mode: "no-cors" });
       if (!r.ok) throw new Error(`Error ${r.status}`);
       const data = await r.json().catch(() => ({}));
 
