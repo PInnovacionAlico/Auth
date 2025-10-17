@@ -4,8 +4,8 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Verificación rápida</title>
-  <link rel="stylesheet" href="assets/css/style.css" />
   <meta name="theme-color" content="#5f37ef">
+  <link rel="stylesheet" href="assets/css/style.css" />
 </head>
 <body>
   <main class="page">
@@ -16,13 +16,13 @@
 
     <section class="card">
       <form id="verify-form" novalidate>
-        <!-- Nombre (dejamos el campo porque lo pediste, pero el contenido lo refinamos luego) -->
+        <!-- Nombre -->
         <div class="field">
           <label for="nombre" class="label required">Nombre completo</label>
           <input id="nombre" name="nombre" type="text" class="input" placeholder="Escribe tu nombre" required>
         </div>
 
-        <!-- Token generado automáticamente -->
+        <!-- Token -->
         <div class="field">
           <label class="label">Código de sesión</label>
           <div class="token-box">
@@ -31,7 +31,7 @@
           </div>
         </div>
 
-        <!-- Cámara / captura -->
+        <!-- Cámara -->
         <div class="field">
           <label class="label required">Selfie con documento</label>
 
@@ -44,7 +44,7 @@
             </div>
           </div>
 
-          <!-- Fallback: si la cámara falla, permitimos captura vía input de archivo (intentará abrir cámara frontal) -->
+          <!-- Fallback si la cámara no abre -->
           <div id="fallback" class="fallback" hidden>
             <p class="hint">Si tu cámara no abre, usa este botón:</p>
             <input type="file" id="file-fallback" accept="image/*" capture="user">
@@ -53,7 +53,7 @@
           <output id="shot-status" class="status" aria-live="polite"></output>
         </div>
 
-        <!-- Consentimiento datos -->
+        <!-- Consentimiento -->
         <section class="consent">
           <p class="consent-text">
             Confirmo que he leído, entendido y acepto la
@@ -79,6 +79,27 @@
       <p class="muted">Demostración • Mantén esta pestaña abierta hasta ver el mensaje de confirmación.</p>
     </footer>
   </main>
+
+  <!-- IFRAME INVISIBLE (recibe la respuesta del Apps Script) -->
+  <iframe name="upload_iframe" id="upload_iframe" style="display:none;"></iframe>
+
+  <!-- FORM “DIRECT-POST” (evita CORS) -->
+  <form id="direct-post" target="upload_iframe"
+        action="https://script.google.com/macros/s/AKfycbxEpxVr7h8IZe1HrEPpygKgm4g_dYHq_2OMf3m0WYWLYBuFpE9WbldGsm3OgfJ2QclAMw/exec"
+        method="POST" enctype="multipart/form-data" style="display:none;">
+    <input name="nombre" type="text">
+    <input name="token" type="text">
+    <input name="consent" type="text">
+    <input name="consent_timestamp" type="text">
+    <input name="policy_url" type="text">
+    <input name="ua" type="text">
+    <input name="tz" type="text">
+    <input name="res" type="text">
+    <input name="file" type="file">
+    <!-- Si usas API KEY en Apps Script:
+    <input name="key" type="text" value="TU_API_KEY">
+    -->
+  </form>
 
   <script src="assets/js/app.js"></script>
 </body>

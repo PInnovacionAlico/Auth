@@ -1,10 +1,7 @@
-// ====== CONFIGURA AQUÍ TU ENDPOINT DE APPS SCRIPT ======
-const ENDPOINT = "https://script.google.com/macros/s/AKfycbwMA8h9Iwcag-CjuKBgvCeuWnUvsYAjCarf2E88A5O5bTYQs14NKiGmo7ZXGCa6LD-ZEg/exec"; // p.ej. "https://script.google.com/macros/s/AKfycb.../exec"
-// =======================================================
-
-// util
+// === util corto ===
 const $ = (sel) => document.querySelector(sel);
 
+// === elementos ===
 const els = {
   form: $("#verify-form"),
   nombre: $("#nombre"),
@@ -19,6 +16,8 @@ const els = {
   fallback: $("#fallback"),
   fileFallback: $("#file-fallback"),
   consent: $("#acepto"),
+  formDirect: $("#direct-post"),
+  iframe: $("#upload_iframe"),
 };
 
 let stream = null;
@@ -26,7 +25,7 @@ let currentBlob = null;
 let currentToken = null;
 let shotTaken = false;
 
-// Genera un token legible; puedes cambiarlo por UUID si prefieres
+// Genera token legible
 function generateToken() {
   const part = () => Math.random().toString(36).slice(2,6).toUpperCase();
   return `A-${part()}-${part()}`;
@@ -36,23 +35,22 @@ function generateToken() {
 async function initCamera() {
   try {
     stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: "user" }, // frontal
+      video: { facingMode: "user" },
       audio: false
     });
     els.video.srcObject = stream;
     els.fallback.hidden = true;
   } catch (e) {
-    // Fallback: si la cámara falla, permitimos subir desde input (abrirá cámara en muchos móviles)
     els.fallback.hidden = false;
     els.shotStatus.textContent = "No se pudo abrir la cámara. Usa el botón alterno.";
   }
 }
 
-// Estampa token y timestamp en la imagen
+// Estampa token + timestamp
 function drawStamp(ctx, token) {
   const pad = 12;
   ctx.fillStyle = "rgba(255,255,255,0.85)";
-  ctx.fillRect(pad, pad, 260, 68);
+  ctx.fillRect(pad, pad, 280, 70);
   ctx.fillStyle = "#000";
   ctx.font = "bold 20px system-ui, sans-serif";
   ctx.fillText(`Código: ${token}`, pad + 10, pad + 28);
@@ -60,13 +58,12 @@ function drawStamp(ctx, token) {
   ctx.fillText(new Date().toLocaleString(), pad + 10, pad + 52);
 }
 
-// Captura frame del video y lo convierte a Blob JPEG con sello
+// Captura del <video> a Blob JPEG
 async function takeShot() {
   const video = els.video;
   const canvas = els.canvas;
   const ctx = canvas.getContext("2d");
 
-  // Ajusta canvas al aspect ratio del video
   const vw = video.videoWidth || 1280;
   const vh = video.videoHeight || 960;
   canvas.width = vw;
@@ -80,7 +77,7 @@ async function takeShot() {
   });
 }
 
-// Fallback: si el usuario usó input file, estampamos igual
+// Fallback: estampar sobre archivo seleccionado
 async function stampOnFile(file) {
   const img = new Image();
   const url = URL.createObjectURL(file);
@@ -105,15 +102,16 @@ async function stampOnFile(file) {
   });
 }
 
-// === Eventos ===
+// === eventos ===
 window.addEventListener("DOMContentLoaded", async () => {
-  // genera token de sesión
+  // token
   currentToken = generateToken();
   els.token.textContent = currentToken;
 
+  // cámara
   await initCamera();
 
-  // Capturar
+  // capturar
   els.btnCapture.addEventListener("click", async () => {
     try {
       els.shotStatus.textContent = "Capturando…";
@@ -121,10 +119,7 @@ window.addEventListener("DOMContentLoaded", async () => {
         currentBlob = await takeShot();
       } else {
         const f = els.fileFallback.files?.[0];
-        if (!f) {
-          els.shotStatus.textContent = "Selecciona o toma una foto primero.";
-          return;
-        }
+        if (!f) { els.shotStatus.textContent = "Selecciona o toma una foto primero."; return; }
         currentBlob = await stampOnFile(f);
       }
       shotTaken = true;
@@ -135,7 +130,7 @@ window.addEventListener("DOMContentLoaded", async () => {
     }
   });
 
-  // Repetir
+  // repetir
   els.btnRetake.addEventListener("click", () => {
     shotTaken = false;
     currentBlob = null;
@@ -143,67 +138,57 @@ window.addEventListener("DOMContentLoaded", async () => {
     els.btnRetake.hidden = true;
   });
 
-  // Envío
+  // envío SIN CORS: form oculto + iframe
   els.form.addEventListener("submit", async (e) => {
     e.preventDefault();
     els.sendStatus.textContent = "";
 
-    // Validaciones mínimas
-    if (!els.nombre.value.trim()) {
-      els.sendStatus.textContent = "Escribe tu nombre.";
-      return;
-    }
-    if (!shotTaken || !currentBlob) {
-      els.sendStatus.textContent = "Toma la foto primero.";
-      return;
-    }
-    if (!els.consent.checked) {
-      els.sendStatus.textContent = "Debes aceptar la política de datos.";
-      return;
-    }
-
-    // Si aún no configuraste ENDPOINT, solo muestra demo
-    if (!ENDPOINT) {
-      els.sendStatus.innerHTML = "✔️ Modo demo: se enviaría la imagen con el token <b>" + currentToken + "</b> a Apps Script.";
-      return;
-    }
+    // validaciones mínimas
+    if (!els.nombre.value.trim()) { els.sendStatus.textContent = "Escribe tu nombre."; return; }
+    if (!shotTaken || !currentBlob) { els.sendStatus.textContent = "Toma la foto primero."; return; }
+    if (!els.consent.checked) { els.sendStatus.textContent = "Debes aceptar la política de datos."; return; }
 
     try {
       els.btnSubmit.disabled = true;
       els.btnSubmit.textContent = "Enviando…";
 
-      const fd = new FormData();
-      fd.append("nombre", els.nombre.value.trim());
-      fd.append("file", currentBlob, `selfie_${currentToken}.jpg`);
-      fd.append("token", currentToken);
+      // pasar campos al form directo
+      const f = els.formDirect;
+      f.elements.nombre.value = els.nombre.value.trim();
+      f.elements.token.value  = currentToken;
+      f.elements.consent.value = "true";
+      f.elements.consent_timestamp.value = new Date().toISOString();
+      f.elements.policy_url.value = "https://alicoempaques.com/blogs/politicas/politicas-de-privacidad";
+      f.elements.ua.value = navigator.userAgent;
+      f.elements.tz.value = Intl.DateTimeFormat().resolvedOptions().timeZone || "";
+      f.elements.res.value = `${screen.width}x${screen.height}`;
 
-      // Evidencia de consentimiento
-      fd.append("consent", "true");
-      fd.append("consent_timestamp", new Date().toISOString());
-      fd.append("policy_url", "https://alicoempaques.com/blogs/politicas/politicas-de-privacidad");
+      // archivo desde el blob
+      const dt = new DataTransfer();
+      dt.items.add(new File([currentBlob], `selfie_${currentToken}.jpg`, { type: "image/jpeg" }));
+      f.elements.file.files = dt.files;
 
-      // Señales suaves del dispositivo (opcional)
-      fd.append("ua", navigator.userAgent);
-      fd.append("tz", Intl.DateTimeFormat().resolvedOptions().timeZone || "");
-      fd.append("res", `${screen.width}x${screen.height}`);
+      // cuando el iframe carga, consideramos éxito
+      const onLoad = () => {
+        els.sendStatus.textContent = "Enviado correctamente. Revisa Drive/Sheet.";
+        els.btnSubmit.disabled = false;
+        els.btnSubmit.textContent = "Enviar";
+        els.iframe.removeEventListener("load", onLoad);
+      };
+      els.iframe.addEventListener("load", onLoad);
 
-      const r = await fetch(ENDPOINT, { method: "POST", body: fd, mode: "no-cors" });
-      if (!r.ok) throw new Error(`Error ${r.status}`);
-      const data = await r.json().catch(() => ({}));
+      // enviar
+      f.submit();
 
-      els.sendStatus.textContent = data?.token
-        ? `Enviado correctamente. Folio: ${data.token}`
-        : "Enviado correctamente.";
     } catch (err) {
       els.sendStatus.textContent = "Error al enviar: " + err.message;
-    } finally {
       els.btnSubmit.disabled = false;
       els.btnSubmit.textContent = "Enviar";
     }
   });
 });
 
-// Limpieza del stream al salir
+// limpiar cámara al salir
 window.addEventListener("beforeunload", () => {
   try { stream && stream.getTracks().forEach(t => t.stop()); } catch {}
 });
