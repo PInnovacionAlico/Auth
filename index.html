@@ -1,105 +1,51 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Verificación rápida</title>
-  <meta name="theme-color" content="#5f37ef">
-  <link rel="stylesheet" href="assets/css/style.css" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Inducción Rápida Alico</title>
+  <link rel="stylesheet" href="assets/css/style.css">
 </head>
 <body>
-  <main class="page">
-    <header class="form-header">
-      <h1 class="form-title">Verificación rápida</h1>
-      <p class="form-subtitle">Captura una selfie con tu documento. Proceso &lt; 1 minuto.</p>
-    </header>
+  <main class="form-container">
+    <h1>Inducción rápida Alico</h1>
+    <p><strong>Esta inducción tiene una Vigencia de 15 días calendario</strong></p>
 
-    <section class="card">
-      <form id="verify-form" novalidate>
-        <!-- Nombre -->
-        <div class="field">
-          <label for="nombre" class="label required">Nombre completo</label>
-          <input id="nombre" name="nombre" type="text" class="input" placeholder="Escribe tu nombre" required>
-        </div>
+    <form id="photoForm">
+      <label for="nombre">Nombre completo *</label>
+      <input type="text" id="nombre" name="nombre" placeholder="Escribe tu nombre" required>
 
-        <!-- Token -->
-        <div class="field">
-          <label class="label">Código de sesión</label>
-          <div class="token-box">
-            <span id="token">—</span>
-            <small class="hint">Este código se estampará en tu foto automáticamente.</small>
-          </div>
-        </div>
+      <div class="camera-section">
+        <video id="video" autoplay playsinline></video>
+        <canvas id="canvas" style="display:none;"></canvas>
+        <button type="button" id="captureBtn">Tomar foto</button>
+      </div>
 
-        <!-- Cámara -->
-        <div class="field">
-          <label class="label required">Selfie con documento</label>
+      <label class="checkbox">
+        <input type="checkbox" id="consent" required>
+        Acepto el tratamiento de mis datos personales y la 
+        <a href="https://alicoempaques.com/blogs/politicas/politicas-de-privacidad" target="_blank">Política de Tratamiento de Datos Personales</a>.
+      </label>
 
-          <div class="camera-wrap">
-            <video id="video" playsinline autoplay muted></video>
-            <canvas id="canvas" width="1280" height="960" hidden></canvas>
-            <div class="camera-actions">
-              <button type="button" id="btn-capture" class="btn-secondary">Tomar foto</button>
-              <button type="button" id="btn-retake" class="btn-tertiary" hidden>Repetir</button>
-            </div>
-          </div>
+      <button type="submit" id="submitBtn">Enviar</button>
+      <p id="status"></p>
+    </form>
 
-          <!-- Fallback si la cámara no abre -->
-          <div id="fallback" class="fallback" hidden>
-            <p class="hint">Si tu cámara no abre, usa este botón:</p>
-            <input type="file" id="file-fallback" accept="image/*" capture="user">
-          </div>
+    <iframe name="upload_iframe" id="upload_iframe" style="display:none;"></iframe>
 
-          <output id="shot-status" class="status" aria-live="polite"></output>
-        </div>
-
-        <!-- Consentimiento -->
-        <section class="consent">
-          <p class="consent-text">
-            Confirmo que he leído, entendido y acepto la
-            <a href="https://alicoempaques.com/blogs/politicas/politicas-de-privacidad"
-               target="_blank" rel="noopener">Política de Tratamiento de Datos Personales de Alico</a>,
-            y autorizo el uso de mis datos e imágenes para los fines allí descritos.
-          </p>
-          <label class="checkbox">
-            <input type="checkbox" id="acepto" name="acepto" required>
-            <span>Acepto el tratamiento de mis datos personales</span>
-          </label>
-        </section>
-
-        <!-- Acciones -->
-        <div class="actions">
-          <button type="submit" id="btn-submit" class="btn-primary">Enviar</button>
-          <span id="send-status" class="status" aria-live="polite"></span>
-        </div>
-      </form>
-    </section>
-
-    <footer class="footer">
-      <p class="muted">Demostración • Mantén esta pestaña abierta hasta ver el mensaje de confirmación.</p>
-    </footer>
+    <form id="direct-post" target="upload_iframe"
+          action="https://script.google.com/macros/s/AKfycbzwbtOU6kihKgasPMAesFrQYf7Iwe3HpLjy3WXdY0Edlr3zAErKIW8kWgEO0lgExUArrg/exec"
+          method="POST" enctype="multipart/form-data" style="display:none;">
+      <input name="nombre" type="text">
+      <input name="token" type="text">
+      <input name="consent" type="text">
+      <input name="policy_url" type="text" value="https://alicoempaques.com/blogs/politicas/politicas-de-privacidad">
+      <input name="image_b64" id="image_b64" type="hidden">
+      <input name="ua" type="text">
+      <input name="tz" type="text">
+      <input name="res" type="text">
+    </form>
   </main>
-
-  <!-- IFRAME INVISIBLE (recibe la respuesta del Apps Script) -->
-  <iframe name="upload_iframe" id="upload_iframe" style="display:none;"></iframe>
-
-  <!-- FORM “DIRECT-POST” (evita CORS) -->
-  <form id="direct-post" target="upload_iframe"
-        action="https://script.google.com/macros/s/AKfycbxEpxVr7h8IZe1HrEPpygKgm4g_dYHq_2OMf3m0WYWLYBuFpE9WbldGsm3OgfJ2QclAMw/exec"
-        method="POST" enctype="multipart/form-data" style="display:none;">
-    <input name="nombre" type="text">
-    <input name="token" type="text">
-    <input name="consent" type="text">
-    <input name="consent_timestamp" type="text">
-    <input name="policy_url" type="text">
-    <input name="ua" type="text">
-    <input name="tz" type="text">
-    <input name="res" type="text">
-    <input name="file" type="file">
-    <!-- Si usas API KEY en Apps Script:
-    <input name="key" type="text" value="TU_API_KEY">
-    -->
-  </form>
 
   <script src="assets/js/app.js"></script>
 </body>

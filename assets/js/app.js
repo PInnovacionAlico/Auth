@@ -1,194 +1,155 @@
-// === util corto ===
-const $ = (sel) => document.querySelector(sel);
-
-// === elementos ===
+// ===== Referencias a elementos del DOM =====
 const els = {
-  form: $("#verify-form"),
-  nombre: $("#nombre"),
-  token: $("#token"),
-  video: $("#video"),
-  canvas: $("#canvas"),
-  btnCapture: $("#btn-capture"),
-  btnRetake: $("#btn-retake"),
-  shotStatus: $("#shot-status"),
-  sendStatus: $("#send-status"),
-  btnSubmit: $("#btn-submit"),
-  fallback: $("#fallback"),
-  fileFallback: $("#file-fallback"),
-  consent: $("#acepto"),
-  formDirect: $("#direct-post"),
-  iframe: $("#upload_iframe"),
+  video: document.getElementById("video"),
+  canvas: document.getElementById("canvas"),
+  captureBtn: document.getElementById("captureBtn"),
+  form: document.getElementById("photoForm"),
+  formDirect: document.getElementById("direct-post"),
+  status: document.getElementById("status"),
+  image_b64: document.getElementById("image_b64"),
+  consent: document.getElementById("consent"),
 };
 
-let stream = null;
+let mediaStream = null;
 let currentBlob = null;
 let currentToken = null;
-let shotTaken = false;
 
-// Genera token legible
+// ===== Utilidades =====
 function generateToken() {
-  const part = () => Math.random().toString(36).slice(2,6).toUpperCase();
+  const part = () => Math.random().toString(36).slice(2, 6).toUpperCase();
   return `A-${part()}-${part()}`;
 }
 
-// Inicializa cámara frontal
+function drawImprint(ctx, canvas, token) {
+  if (!token) return;
+
+  const pad = 18;
+  const x = canvas.width - pad;
+  const y = canvas.height - pad;
+
+  // Bloque semitransparente para legibilidad
+  const boxW = Math.max(260, ctx.measureText(token).width + 40);
+  const boxH = 70;
+  ctx.fillStyle = "rgba(0,0,0,0.35)";
+  ctx.fillRect(x - boxW, y - boxH, boxW, boxH);
+
+  // Texto principal (token)
+  ctx.textAlign = "right";
+  ctx.lineJoin = "round";
+  ctx.font = "bold 32px system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif";
+
+  // Sombra/contorno oscuro
+  ctx.strokeStyle = "rgba(0,0,0,0.6)";
+  ctx.lineWidth = 4;
+  ctx.strokeText(token, x - 10, y - 22);
+
+  // Relleno claro encima
+  ctx.fillStyle = "rgba(255,255,255,0.95)";
+  ctx.fillText(token, x - 10, y - 22);
+
+  // Timestamp debajo del token
+  const ts = new Date().toLocaleString();
+  ctx.font = "18px system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif";
+  ctx.strokeText(ts, x - 10, y - 4);
+  ctx.fillText(ts, x - 10, y - 4);
+}
+
+// Convierte dataURL a Blob (por si quieres usar currentBlob)
+function dataURLToBlob(dataURL) {
+  const [meta, b64] = dataURL.split(",");
+  const mime = meta.match(/data:(.*?);base64/)[1] || "image/jpeg";
+  const bin = atob(b64);
+  const len = bin.length;
+  const u8 = new Uint8Array(len);
+  for (let i = 0; i < len; i++) u8[i] = bin.charCodeAt(i);
+  return new Blob([u8], { type: mime });
+}
+
+// ===== Cámara =====
 async function initCamera() {
   try {
-    stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: "user" },
-      audio: false
+    mediaStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: "user" }, // cámara frontal
+      audio: false,
     });
-    els.video.srcObject = stream;
-    els.fallback.hidden = true;
-  } catch (e) {
-    els.fallback.hidden = false;
-    els.shotStatus.textContent = "No se pudo abrir la cámara. Usa el botón alterno.";
+    els.video.srcObject = mediaStream;
+  } catch (err) {
+    alert("No se pudo acceder a la cámara: " + err.message);
   }
 }
+initCamera();
 
-// Estampa token + timestamp
-function drawStamp(ctx, token) {
-  const pad = 12;
-  ctx.fillStyle = "rgba(255,255,255,0.85)";
-  ctx.fillRect(pad, pad, 280, 70);
-  ctx.fillStyle = "#000";
-  ctx.font = "bold 20px system-ui, sans-serif";
-  ctx.fillText(`Código: ${token}`, pad + 10, pad + 28);
-  ctx.font = "14px system-ui, sans-serif";
-  ctx.fillText(new Date().toLocaleString(), pad + 10, pad + 52);
-}
+// ===== Capturar foto con imprint =====
+els.captureBtn.addEventListener("click", () => {
+  try {
+    // 1) Asegura que ya tienes token ANTES de dibujar
+    if (!currentToken) currentToken = generateToken();
 
-// Captura del <video> a Blob JPEG
-async function takeShot() {
-  const video = els.video;
-  const canvas = els.canvas;
-  const ctx = canvas.getContext("2d");
+    // 2) Dibuja el frame del video
+    const ctx = els.canvas.getContext("2d");
+    els.canvas.width = els.video.videoWidth || 1280;
+    els.canvas.height = els.video.videoHeight || 960;
+    ctx.drawImage(els.video, 0, 0, els.canvas.width, els.canvas.height);
 
-  const vw = video.videoWidth || 1280;
-  const vh = video.videoHeight || 960;
-  canvas.width = vw;
-  canvas.height = vh;
+    // 3) Estampa token + timestamp
+    drawImprint(ctx, els.canvas, currentToken);
 
-  ctx.drawImage(video, 0, 0, vw, vh);
-  drawStamp(ctx, currentToken);
-
-  return new Promise((resolve) => {
-    canvas.toBlob((blob) => resolve(blob), "image/jpeg", 0.92);
-  });
-}
-
-// Fallback: estampar sobre archivo seleccionado
-async function stampOnFile(file) {
-  const img = new Image();
-  const url = URL.createObjectURL(file);
-  await new Promise((res, rej) => {
-    img.onload = () => res();
-    img.onerror = rej;
-    img.src = url;
-  });
-
-  const canvas = els.canvas;
-  const ctx = canvas.getContext("2d");
-  canvas.width = img.naturalWidth || 1280;
-  canvas.height = img.naturalHeight || 960;
-  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-  drawStamp(ctx, currentToken);
-
-  return new Promise((resolve) => {
-    canvas.toBlob((blob) => {
-      URL.revokeObjectURL(url);
-      resolve(blob);
-    }, "image/jpeg", 0.92);
-  });
-}
-
-// === eventos ===
-window.addEventListener("DOMContentLoaded", async () => {
-  // token
-  currentToken = generateToken();
-  els.token.textContent = currentToken;
-
-  // cámara
-  await initCamera();
-
-  // capturar
-  els.btnCapture.addEventListener("click", async () => {
-    try {
-      els.shotStatus.textContent = "Capturando…";
-      if (els.fallback.hidden) {
-        currentBlob = await takeShot();
-      } else {
-        const f = els.fileFallback.files?.[0];
-        if (!f) { els.shotStatus.textContent = "Selecciona o toma una foto primero."; return; }
-        currentBlob = await stampOnFile(f);
-      }
-      shotTaken = true;
-      els.shotStatus.textContent = "Foto lista ✔️";
-      els.btnRetake.hidden = false;
-    } catch (e) {
-      els.shotStatus.textContent = "No se pudo capturar la foto. Reintenta.";
-    }
-  });
-
-  // repetir
-  els.btnRetake.addEventListener("click", () => {
-    shotTaken = false;
-    currentBlob = null;
-    els.shotStatus.textContent = "Toma una nueva foto.";
-    els.btnRetake.hidden = true;
-  });
-
-  // envío SIN CORS: form oculto + iframe
-  els.form.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    els.sendStatus.textContent = "";
-
-    // validaciones mínimas
-    if (!els.nombre.value.trim()) { els.sendStatus.textContent = "Escribe tu nombre."; return; }
-    if (!shotTaken || !currentBlob) { els.sendStatus.textContent = "Toma la foto primero."; return; }
-    if (!els.consent.checked) { els.sendStatus.textContent = "Debes aceptar la política de datos."; return; }
-
-    try {
-      els.btnSubmit.disabled = true;
-      els.btnSubmit.textContent = "Enviando…";
-
-      // pasar campos al form directo
-      const f = els.formDirect;
-      f.elements.nombre.value = els.nombre.value.trim();
-      f.elements.token.value  = currentToken;
-      f.elements.consent.value = "true";
-      f.elements.consent_timestamp.value = new Date().toISOString();
-      f.elements.policy_url.value = "https://alicoempaques.com/blogs/politicas/politicas-de-privacidad";
-      f.elements.ua.value = navigator.userAgent;
-      f.elements.tz.value = Intl.DateTimeFormat().resolvedOptions().timeZone || "";
-      f.elements.res.value = `${screen.width}x${screen.height}`;
-
-      // archivo desde el blob
-      const dt = new DataTransfer();
-      dt.items.add(new File([currentBlob], `selfie_${currentToken}.jpg`, { type: "image/jpeg" }));
-      f.elements.file.files = dt.files;
-
-      // cuando el iframe carga, consideramos éxito
-      const onLoad = () => {
-        els.sendStatus.textContent = "Enviado correctamente. Revisa Drive/Sheet.";
-        els.btnSubmit.disabled = false;
-        els.btnSubmit.textContent = "Enviar";
-        els.iframe.removeEventListener("load", onLoad);
-      };
-      els.iframe.addEventListener("load", onLoad);
-
-      // enviar
-      f.submit();
-
-    } catch (err) {
-      els.sendStatus.textContent = "Error al enviar: " + err.message;
-      els.btnSubmit.disabled = false;
-      els.btnSubmit.textContent = "Enviar";
-    }
-  });
+    // 4) Guarda Blob (por si lo necesitas) y status
+    els.canvas.toBlob(
+      (blob) => {
+        currentBlob = blob;
+        els.status.textContent = `Foto capturada ✅ Código: ${currentToken}`;
+      },
+      "image/jpeg",
+      0.92
+    );
+  } catch (e) {
+    els.status.textContent = "No se pudo capturar la foto. Intenta de nuevo.";
+  }
 });
 
-// limpiar cámara al salir
+// ===== Envío (form + iframe, sin CORS) =====
+els.form.addEventListener("submit", (e) => {
+  e.preventDefault();
+
+  const nombre = els.form.nombre?.value?.trim() || "";
+
+  // Validaciones mínimas
+  if (!nombre) {
+    els.status.textContent = "Escribe tu nombre.";
+    return;
+  }
+  if (!currentToken || !els.canvas.width) {
+    els.status.textContent = "Toma la foto primero.";
+    return;
+  }
+  if (!els.consent.checked) {
+    els.status.textContent = "Debes aceptar la política de datos.";
+    return;
+  }
+
+  // 1) Generar dataURL del canvas (ya contiene el imprint)
+  const dataURL = els.canvas.toDataURL("image/jpeg", 0.92);
+
+  // 2) Pasar campos al formulario oculto
+  const f = els.formDirect;
+  f.elements.nombre.value = nombre;
+  f.elements.token.value = currentToken;
+  f.elements.consent.value = "true";
+  f.elements.ua.value = navigator.userAgent;
+  f.elements.tz.value = Intl.DateTimeFormat().resolvedOptions().timeZone || "";
+  f.elements.res.value = `${screen.width}x${screen.height}`;
+  f.elements.image_b64.value = dataURL; // 👈 aquí va la imagen con el sello (base64)
+
+  // 3) Enviar
+  els.status.textContent = "Enviando…";
+  f.submit();
+  els.status.textContent = "Enviado correctamente. Revisa Drive/Sheet.";
+});
+
+// ===== Limpieza =====
 window.addEventListener("beforeunload", () => {
-  try { stream && stream.getTracks().forEach(t => t.stop()); } catch {}
+  try {
+    if (mediaStream) mediaStream.getTracks().forEach((t) => t.stop());
+  } catch {}
 });
