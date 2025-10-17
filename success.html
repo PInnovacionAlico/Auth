@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Código de registro</title>
+  <link rel="stylesheet" href="assets/css/style.css" />
+</head>
+<body>
+  <main class="form-container success-container">
+    <h1>Registro enviado</h1>
+    <p class="muted">Este es tu código. Preséntalo al ingresar.</p>
+
+  <div class="code-box" id="codeDisplay" aria-live="polite"><span id="codeText">—</span></div>
+
+    <div class="btn-row">
+      <button id="copyBtn" type="button">Copiar código</button>
+      <button id="downloadBtn" type="button">Descargar imagen</button>
+    </div>
+
+    <p id="helperMsg" class="muted" aria-live="polite"></p>
+
+    <a class="link-back" href="index.html">Volver</a>
+  </main>
+
+  <script src="assets/js/success.js"></script>
+</body>
+</html>

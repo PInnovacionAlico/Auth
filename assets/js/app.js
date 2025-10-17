@@ -4,15 +4,29 @@ const els = {
   canvas: document.getElementById("canvas"),
   captureBtn: document.getElementById("captureBtn"),
   form: document.getElementById("photoForm"),
+  nombre: document.getElementById("nombre"),
   formDirect: document.getElementById("direct-post"),
   status: document.getElementById("status"),
+  submitStatus: document.getElementById("submitStatus"),
   image_b64: document.getElementById("image_b64"),
   consent: document.getElementById("consent"),
+  preview: document.getElementById("preview"),
+  toggleCamera: document.getElementById("toggleCamera"),
 };
 
 let mediaStream = null;
 let currentBlob = null;
 let currentToken = null;
+let lastPreviewUrl = null;
+// Helper para actualizar mensajes con clases de estado
+function setStatus(el, text, type = "info") {
+  if (!el) return;
+  el.textContent = text || "";
+  el.classList.remove("status--success", "status--error", "status--info");
+  const cls = type === "success" ? "status--success" : type === "error" ? "status--error" : "status--info";
+  el.classList.add(cls);
+}
+
 
 // ===== Utilidades =====
 function generateToken() {
@@ -65,25 +79,65 @@ function dataURLToBlob(dataURL) {
   return new Blob([u8], { type: mime });
 }
 
-// ===== Cámara =====
+// Habilitar/Deshabilitar botón de captura según nombre
+function updateCaptureEnabled() {
+  const hasName = (els.nombre?.value || "").trim().length > 0;
+  const cameraActive = !!mediaStream;
+  els.captureBtn.disabled = !(hasName && cameraActive);
+}
+
+els.nombre?.addEventListener("input", updateCaptureEnabled);
+// Estado inicial al cargar
+updateCaptureEnabled();
+
+// ===== Cámara (bajo demanda) =====
 async function initCamera() {
+  if (mediaStream) return; // ya activa
   try {
     mediaStream = await navigator.mediaDevices.getUserMedia({
       video: { facingMode: "user" }, // cámara frontal
       audio: false,
     });
     els.video.srcObject = mediaStream;
+    els.video.classList.remove("is-hidden");
+    setStatus(els.status, "Cámara activada.", "info");
   } catch (err) {
-    alert("No se pudo acceder a la cámara: " + err.message);
+    setStatus(els.status, "No se pudo acceder a la cámara: " + err.message, "error");
+    if (els.toggleCamera) els.toggleCamera.checked = false;
   }
 }
-initCamera();
+
+function stopCamera() {
+  try {
+    if (mediaStream) mediaStream.getTracks().forEach((t) => t.stop());
+  } catch {}
+  mediaStream = null;
+  els.video.srcObject = null;
+  els.video.classList.add("is-hidden");
+  setStatus(els.status, "Cámara desactivada.", "info");
+}
+
+// Toggle de cámara
+els.toggleCamera?.addEventListener("change", async (e) => {
+  if (e.target.checked) {
+    await initCamera();
+  } else {
+    stopCamera();
+  }
+  updateCaptureEnabled();
+});
 
 // ===== Capturar foto con imprint =====
 els.captureBtn.addEventListener("click", () => {
   try {
+    // Validación extra por si acaso
+    const nombreVal = (els.nombre?.value || "").trim();
+    if (!nombreVal) {
+      setStatus(els.status, "Escribe tu nombre antes de tomar la foto.", "error");
+      return;
+    }
     // 1) Asegura que ya tienes token ANTES de dibujar
-    if (!currentToken) currentToken = generateToken();
+  if (!currentToken) currentToken = generateToken();
 
     // 2) Dibuja el frame del video
     const ctx = els.canvas.getContext("2d");
@@ -98,13 +152,21 @@ els.captureBtn.addEventListener("click", () => {
     els.canvas.toBlob(
       (blob) => {
         currentBlob = blob;
-        els.status.textContent = `Foto capturada ✅ Código: ${currentToken}`;
+        setStatus(els.status, `Foto capturada ✅ Código: ${currentToken}` , "success");
+
+        // Actualiza la vista previa con un objeto URL para eficiencia
+        if (els.preview) {
+          if (lastPreviewUrl) URL.revokeObjectURL(lastPreviewUrl);
+          lastPreviewUrl = URL.createObjectURL(blob);
+          els.preview.src = lastPreviewUrl;
+          els.preview.style.display = "block";
+        }
       },
       "image/jpeg",
       0.92
     );
   } catch (e) {
-    els.status.textContent = "No se pudo capturar la foto. Intenta de nuevo.";
+    setStatus(els.status, "No se pudo capturar la foto. Intenta de nuevo.", "error");
   }
 });
 
@@ -116,15 +178,15 @@ els.form.addEventListener("submit", (e) => {
 
   // Validaciones mínimas
   if (!nombre) {
-    els.status.textContent = "Escribe tu nombre.";
+    setStatus(els.submitStatus, "Escribe tu nombre.", "error");
     return;
   }
   if (!currentToken || !els.canvas.width) {
-    els.status.textContent = "Toma la foto primero.";
+    setStatus(els.submitStatus, "Toma la foto primero.", "error");
     return;
   }
   if (!els.consent.checked) {
-    els.status.textContent = "Debes aceptar la política de datos.";
+    setStatus(els.submitStatus, "Debes aceptar la política de datos.", "error");
     return;
   }
 
@@ -142,9 +204,20 @@ els.form.addEventListener("submit", (e) => {
   f.elements.image_b64.value = dataURL; // 👈 aquí va la imagen con el sello (base64)
 
   // 3) Enviar
-  els.status.textContent = "Enviando…";
+  setStatus(els.submitStatus, "Enviando…", "info");
   f.submit();
-  els.status.textContent = "Enviado correctamente. Revisa Drive/Sheet.";
+  setStatus(els.submitStatus, "Enviado correctamente. Redirigiendo…", "success");
+  try {
+    const url = new URL(window.location.origin + window.location.pathname.replace(/[^/]+$/, "success.html"));
+    url.searchParams.set("token", currentToken);
+    // Dar un pequeño tiempo para que el submit del iframe se dispare sin cortes 
+    setTimeout(() => {
+      window.location.href = url.toString();
+    }, 600);
+  } catch (e) {
+    // Fallback: relativo simple
+    window.location.href = `success.html?token=${encodeURIComponent(currentToken)}`;
+  }
 });
 
 // ===== Limpieza =====

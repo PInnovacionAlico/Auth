@@ -16,9 +16,29 @@
       <input type="text" id="nombre" name="nombre" placeholder="Escribe tu nombre" required>
 
       <div class="camera-section">
-        <video id="video" autoplay playsinline></video>
+        <div class="video-embed" aria-label="Video informativo">
+          <iframe
+            src="https://www.youtube.com/embed/d7UDY0TkNqg?si=3rhqvh6agk07m4BA"
+            title="YouTube video"
+            frameborder="0"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+            referrerpolicy="strict-origin-when-cross-origin"
+            allowfullscreen
+            loading="lazy"></iframe>
+        </div>
+        <label class="camera-toggle">
+          <input type="checkbox" id="toggleCamera">
+          Activar cámara
+        </label>
+        <video id="video" class="is-hidden" autoplay playsinline></video>
         <canvas id="canvas" style="display:none;"></canvas>
-        <button type="button" id="captureBtn">Tomar foto</button>
+        <p id="status" aria-live="polite"></p>
+  <button type="button" id="captureBtn" disabled>Tomar foto</button>
+      </div>
+
+      <div class="preview-section" aria-live="polite">
+        <p class="preview-caption">Vista previa</p>
+        <img id="preview" alt="Vista previa de la foto tomada" style="display:none;" />
       </div>
 
       <label class="checkbox">
@@ -27,8 +47,8 @@
         <a href="https://alicoempaques.com/blogs/politicas/politicas-de-privacidad" target="_blank">Política de Tratamiento de Datos Personales</a>.
       </label>
 
-      <button type="submit" id="submitBtn">Enviar</button>
-      <p id="status"></p>
+  <button type="submit" id="submitBtn">Enviar</button>
+  <p id="submitStatus" aria-live="polite"></p>
     </form>
 
     <iframe name="upload_iframe" id="upload_iframe" style="display:none;"></iframe>
