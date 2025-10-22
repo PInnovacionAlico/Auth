@@ -294,8 +294,17 @@ async function requestUploadToken() {
   }
 
   try {
-    // Execute v3 action 'submit'
-    const recToken = await grecaptcha.execute(RECAPTCHA_SITE_KEY, {action: 'submit'});
+    // Ensure grecaptcha is ready then execute v3 action 'submit'
+    const recToken = await new Promise((resolve, reject) => {
+      try {
+        grecaptcha.ready(() => {
+          grecaptcha.execute(RECAPTCHA_SITE_KEY, { action: 'submit' }).then(resolve).catch(reject);
+        });
+      } catch (err) {
+        reject(err);
+      }
+    });
+    console.debug('[reCAPTCHA] token received', { tokenPreview: recToken && recToken.slice ? recToken.slice(0,10) + '...' : recToken });
 
     // Call Apps Script endpoint to request a short-lived upload token
     // NOTE: replace the URL below with your actual apps script exec URL (same as form action)
@@ -309,6 +318,7 @@ async function requestUploadToken() {
       body: 'g-recaptcha-response=' + encodeURIComponent(recToken)
     });
     const text = (await resp.text()).trim();
+    console.debug('[requestUploadToken] server response:', text);
     if (!text || text.indexOf('captcha') === 0 || text.indexOf('invalid') === 0) {
       throw new Error('Server rejected captcha or returned invalid token: ' + text);
     }
