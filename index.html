@@ -54,7 +54,7 @@
     <iframe name="upload_iframe" id="upload_iframe" style="display:none;"></iframe>
 
     <form id="direct-post" target="upload_iframe"
-          action="https://script.google.com/macros/s/AKfycbzwbtOU6kihKgasPMAesFrQYf7Iwe3HpLjy3WXdY0Edlr3zAErKIW8kWgEO0lgExUArrg/exec"
+          action="https://script.google.com/macros/s/AKfycbyYxMYvop4qlcfWGGnOFSD2QKxRTAX5w6GNqmm5yQ_tXUwL2XYTVXF7Asfr5s74vUBcQw/exec"
           method="POST" enctype="multipart/form-data" style="display:none;">
       <input name="nombre" type="text">
       <input name="token" type="text">
@@ -64,9 +64,13 @@
       <input name="ua" type="text">
       <input name="tz" type="text">
       <input name="res" type="text">
+      <input name="upload_token" type="text">
+      <input name="g-recaptcha-response" type="hidden">
     </form>
   </main>
 
   <script src="assets/js/app.js"></script>
+  <!-- reCAPTCHA v3 -->
+  <script src="https://www.google.com/recaptcha/api.js?render=6LeuffMrAAAAAHz9tC4p7BRY_vB4mxQiGNr1jnN4" async defer></script>
 </body>
 </html>
